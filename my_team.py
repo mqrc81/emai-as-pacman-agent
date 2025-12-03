@@ -181,3 +181,60 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
 
     def get_weights(self, game_state, action):
         return {'num_invaders': -1000, 'on_defense': 100, 'invader_distance': -10, 'stop': -100, 'reverse': -2}
+
+
+class MyAgent(ReflexCaptureAgent):
+
+    def choose_action(self, game_state):
+        """
+                Choose the action with the highest evaluation.
+                Mirrors the example given in the project, but
+                allows you to customize behavior for this agent.
+                """
+        actions = game_state.get_legal_actions(self.index)
+
+        values = [self.evaluate(game_state, action) for action in actions]
+
+        max_value = max(values)
+        best_actions = [
+            action for action, value in zip(actions, values)
+            if value == max_value
+        ]
+
+        # if little food left, head home
+        food_left = len(self.get_food(game_state).as_list())
+        if food_left <= 2:
+            best_dist = 999999
+            best_action = None
+            for action in actions:
+                successor = self.get_successor(game_state, action)
+                pos = successor.get_agent_position(self.index)
+                dist = self.get_maze_distance(self.start, pos)
+                if dist < best_dist:
+                    best_dist = dist
+                    best_action = action
+            return best_action
+
+        return random.choice(best_actions)
+
+    def get_features(self, game_state, action):
+        features = util.Counter()
+        successor = self.get_successor(game_state, action)
+        food_list = self.get_food(successor).as_list()
+
+        features['successor_score'] = -len(food_list)
+
+        # Distance to nearest food
+        if food_list:
+            my_pos = successor.get_agent_position(self.index)
+            features['distance_to_food'] = min(
+                self.get_maze_distance(my_pos, food) for food in food_list
+            )
+
+        return features
+
+    def get_weights(self, game_state, action):
+        return {
+            'successor_score': 100,
+            'distance_to_food': -1
+        }
